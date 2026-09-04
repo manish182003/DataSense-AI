@@ -34,7 +34,9 @@ def sanitize_column_name(col_name: str) -> str:
     clean_col = re.sub(r'_+', '_', clean_col).strip('_')
     return clean_col if clean_col else "unnamed_column"
 
-def process_file_upload(file_bytes: bytes, filename: str) -> Tuple[str, DatasetMetadata, pd.DataFrame]:
+from typing import Tuple, Union
+
+def process_file_upload(file_bytes_or_path: Union[bytes, str], filename: str) -> Tuple[str, DatasetMetadata, pd.DataFrame]:
     """
     High-performance ingestion flow using DuckDB C++ native file readers.
     Supports massive datasets (300,000+ rows) safely on low-memory production environments.
@@ -44,11 +46,15 @@ def process_file_upload(file_bytes: bytes, filename: str) -> Tuple[str, DatasetM
     
     temp_dir = settings.UPLOAD_DIR
     os.makedirs(temp_dir, exist_ok=True)
-    temp_filepath = os.path.join(temp_dir, f"{table_name}{file_ext}")
-
-    # Write file bytes to disk temporarily for DuckDB native streaming
-    with open(temp_filepath, "wb") as f:
-        f.write(file_bytes)
+    
+    if isinstance(file_bytes_or_path, str) and os.path.exists(file_bytes_or_path):
+        temp_filepath = file_bytes_or_path
+        cleanup_temp = True
+    else:
+        temp_filepath = os.path.join(temp_dir, f"{table_name}{file_ext}")
+        with open(temp_filepath, "wb") as f:
+            f.write(file_bytes_or_path)
+        cleanup_temp = True
 
     try:
         conn = get_db_connection()
@@ -87,19 +93,23 @@ def process_file_upload(file_bytes: bytes, filename: str) -> Tuple[str, DatasetM
         if total_rows == 0:
             raise ValueError("The uploaded dataset file is empty.")
 
-        # Compute column null metrics fast via DuckDB C++ queries
+        # Compute column null metrics fast via single batch DuckDB vectorized query
         column_meta_list = []
-        for col_tuple in schema_info:
-            col_name = col_tuple[0]
-            col_type = col_tuple[1]
-            null_count = conn.execute(f'SELECT COUNT(*) FROM {table_name} WHERE "{col_name}" IS NULL').fetchone()[0]
-            col_null_pct = round((null_count / total_rows * 100) if total_rows > 0 else 0, 2)
-            column_meta_list.append(ColumnMetadata(
-                name=col_name,
-                dtype=str(col_type),
-                missing_count=null_count,
-                missing_percentage=col_null_pct
-            ))
+        if schema_info:
+            null_exprs = [f'COUNT(*) - COUNT("{c[0]}")' for c in schema_info]
+            null_counts_row = conn.execute(f"SELECT {', '.join(null_exprs)} FROM {table_name}").fetchone()
+            
+            for idx, col_tuple in enumerate(schema_info):
+                col_name = col_tuple[0]
+                col_type = col_tuple[1]
+                null_count = int(null_counts_row[idx]) if null_counts_row else 0
+                col_null_pct = round((null_count / total_rows * 100) if total_rows > 0 else 0, 2)
+                column_meta_list.append(ColumnMetadata(
+                    name=col_name,
+                    dtype=str(col_type),
+                    missing_count=null_count,
+                    missing_percentage=col_null_pct
+                ))
 
         total_missing = sum(c.missing_count for c in column_meta_list)
         total_cells = total_rows * total_cols

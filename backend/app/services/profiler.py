@@ -212,9 +212,11 @@ def generate_profile_charts(df: pd.DataFrame) -> List[ProfileChart]:
 def build_dataset_profile(dataset_id: str, df: pd.DataFrame) -> ProfileResponse:
     """
     Generates summary statistics and auto-profiled Plotly visual specs.
+    Safely limits input dataframe to max 5,000 rows for high performance and low RAM footprint.
     """
-    stats = generate_column_stats(df)
-    charts = generate_profile_charts(df)
+    sample_df = df.head(5000) if len(df) > 5000 else df
+    stats = generate_column_stats(sample_df)
+    charts = generate_profile_charts(sample_df)
     return ProfileResponse(
         dataset_id=dataset_id,
         summary_stats=stats,

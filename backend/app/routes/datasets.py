@@ -15,17 +15,29 @@ router = APIRouter(prefix="/api/datasets", tags=["Datasets"])
 # In-memory dictionary cache for active datasets: dataset_id -> (metadata, df)
 DATASET_STORE: Dict[str, Dict] = {}
 
+import os
+import uuid
+from app.core.config import settings
+
 @router.post("/upload", response_model=DatasetMetadata, status_code=status.HTTP_201_CREATED)
 async def upload_dataset(file: UploadFile = File(...)):
     """
     Upload a CSV, Excel, or JSON dataset.
-    Parses file, infers data types, stores table in DuckDB, and returns summary metadata.
+    Streams large dataset uploads in 1MB chunks to disk to keep RAM memory usage flat (<5MB).
     """
     filename = file.filename or "uploaded_file.csv"
-    file_bytes = await file.read()
+    file_ext = os.path.splitext(filename)[1].lower()
+    
+    temp_dir = settings.UPLOAD_DIR
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_filepath = os.path.join(temp_dir, f"upload_{uuid.uuid4().hex[:8]}{file_ext}")
     
     try:
-        table_name, metadata, df = process_file_upload(file_bytes, filename)
+        with open(temp_filepath, "wb") as f:
+            while chunk := await file.read(1024 * 1024):
+                f.write(chunk)
+
+        table_name, metadata, df = process_file_upload(temp_filepath, filename)
         # Store in dataset cache for fast profiling access
         DATASET_STORE[table_name] = {
             "metadata": metadata,
@@ -47,24 +59,32 @@ def get_dataset_entry(dataset_id: str) -> Dict:
         schema = get_table_schema(dataset_id)
         if schema:
             conn = get_db_connection()
-            df = conn.execute(f"SELECT * FROM {dataset_id}").df()
-            conn.close()
-            total_rows = len(df)
-            total_cols = len(df.columns)
+            total_rows = conn.execute(f"SELECT COUNT(*) FROM {dataset_id}").fetchone()[0]
+            schema_info = conn.execute(f"DESCRIBE {dataset_id}").fetchall()
+            total_cols = len(schema_info)
             total_cells = total_rows * total_cols
-            total_missing = int(df.isnull().sum().sum())
-            total_missing_pct = round((total_missing / total_cells * 100) if total_cells > 0 else 0, 2)
             
             column_meta_list = []
-            for col in df.columns:
-                col_nulls = int(df[col].isnull().sum())
-                col_null_pct = round((col_nulls / total_rows * 100) if total_rows > 0 else 0, 2)
-                column_meta_list.append(ColumnMetadata(
-                    name=col,
-                    dtype=str(df[col].dtype),
-                    missing_count=col_nulls,
-                    missing_percentage=col_null_pct
-                ))
+            if schema_info and total_rows > 0:
+                null_exprs = [f'COUNT(*) - COUNT("{c[0]}")' for c in schema_info]
+                null_counts_row = conn.execute(f"SELECT {', '.join(null_exprs)} FROM {dataset_id}").fetchone()
+                for idx, col_tuple in enumerate(schema_info):
+                    col_name = col_tuple[0]
+                    col_type = col_tuple[1]
+                    col_nulls = int(null_counts_row[idx]) if null_counts_row else 0
+                    col_null_pct = round((col_nulls / total_rows * 100) if total_rows > 0 else 0, 2)
+                    column_meta_list.append(ColumnMetadata(
+                        name=col_name,
+                        dtype=str(col_type),
+                        missing_count=col_nulls,
+                        missing_percentage=col_null_pct
+                    ))
+
+            total_missing = sum(c.missing_count for c in column_meta_list)
+            total_missing_pct = round((total_missing / total_cells * 100) if total_cells > 0 else 0, 2)
+
+            df = conn.execute(f"SELECT * FROM {dataset_id} LIMIT 5000").df()
+            conn.close()
 
             sample_df = df.head(5).where(pd.notnull(df.head(5)), None)
             sample_rows = sample_df.to_dict(orient="records")

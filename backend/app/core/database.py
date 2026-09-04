@@ -37,14 +37,15 @@ def register_dataframe(table_name: str, df: pd.DataFrame):
     finally:
         conn.close()
 
-def execute_query(sql_query: str) -> List[Dict[str, Any]]:
+def execute_query(sql_query: str, max_rows: int = 2000) -> List[Dict[str, Any]]:
     """
     Executes a SQL query against DuckDB and returns the result as a list of dictionaries.
+    Safely caps returned rows (default max 2000) to prevent memory allocation crashes on large tables.
     """
     conn = get_db_connection()
     try:
         rel = conn.execute(sql_query)
-        df_result = rel.df()
+        df_result = rel.fetch_df(max_rows)
         
         # Replace NaN values with None for proper JSON serialization
         df_result = df_result.where(pd.notnull(df_result), None)

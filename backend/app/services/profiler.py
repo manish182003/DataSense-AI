@@ -35,11 +35,13 @@ def safe_float(val: Any) -> float:
 def generate_column_stats(df: pd.DataFrame) -> Dict[str, Any]:
     """
     Computes summary statistics for each column in a JSON-safe manner.
+    Safely samples up to 5,000 rows for high performance.
     """
+    sample_df = df.sample(min(5000, len(df)), random_state=42) if len(df) > 5000 else df
     stats = {}
-    for col in df.columns:
-        col_data = df[col].dropna()
-        if pd.api.types.is_numeric_dtype(df[col]):
+    for col in sample_df.columns:
+        col_data = sample_df[col].dropna()
+        if pd.api.types.is_numeric_dtype(sample_df[col]):
             stats[col] = {
                 "type": "numeric",
                 "count": int(len(col_data)),

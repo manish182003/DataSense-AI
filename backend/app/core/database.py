@@ -44,8 +44,9 @@ def execute_query(sql_query: str, max_rows: int = 2000) -> List[Dict[str, Any]]:
     """
     conn = get_db_connection()
     try:
-        rel = conn.execute(sql_query)
-        df_result = rel.fetch_df(max_rows)
+        df_result = conn.execute(sql_query).df()
+        if len(df_result) > max_rows:
+            df_result = df_result.head(max_rows)
         
         # Replace NaN values with None for proper JSON serialization
         df_result = df_result.where(pd.notnull(df_result), None)

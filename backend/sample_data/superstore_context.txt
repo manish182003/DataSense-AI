@@ -1,0 +1,17 @@
+Sample Superstore - Business Policy & Glossary Notes
+
+1. Regional Sales Territories & Growth Targets:
+- East Region: High-density commercial market. Target segment is Corporate accounts. Discount threshold is capped at 15%.
+- West Region: Technology and home office hub. Prioritize Furniture and Technology categories.
+- South Region: Primary market for Consumer segment retail expansion.
+- Central Region: Agricultural and manufacturing equipment distribution.
+
+2. Product Category Definitions & Profit Margin Targets:
+- Technology: High-margin hardware, phones, and copiers. Minimum target profit margin is 25%.
+- Furniture: Office furniture, chairs, tables, and bookcases. Tables carry high shipping logistics overhead and often operate at slim or negative margins when discounted above 20%.
+- Office Supplies: High-volume, repeatable items (Binders, Paper, Fasteners, Envelopes).
+
+3. Discount & Order Rules:
+- Standard Discount Policy: Sales representatives may apply up to 10% discount without approval.
+- High Discount Penalty: Discounts exceeding 20% severely erode profit margins, especially in the Tables sub-category.
+- High Priority Customers: Corporate and Home Office accounts with annual order volume > $10,000 receive priority shipping via First Class.

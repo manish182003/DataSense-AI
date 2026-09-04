@@ -1,0 +1,42 @@
+[
+  {
+    "id": "q1",
+    "query": "What is the return policy window?",
+    "ground_truth_answer": "Customers can return items within 30 days of purchase for a full refund.",
+    "ground_truth_contexts": [
+      "Returns are accepted within 30 days of original purchase for a full refund with valid proof of purchase."
+    ]
+  },
+  {
+    "id": "q2",
+    "query": "How is ARR calculated?",
+    "ground_truth_answer": "ARR is calculated by taking the Monthly Recurring Revenue (MRR) and multiplying it by 12.",
+    "ground_truth_contexts": [
+      "Annual Recurring Revenue (ARR) equals Monthly Recurring Revenue (MRR) multiplied by 12."
+    ]
+  },
+  {
+    "id": "q3",
+    "query": "What are the shipping SLAs for standard delivery?",
+    "ground_truth_answer": "Standard delivery takes 3 to 5 business days across domestic regions.",
+    "ground_truth_contexts": [
+      "Standard domestic shipping delivery SLA is 3 to 5 business days from order fulfillment."
+    ]
+  },
+  {
+    "id": "q4",
+    "query": "What is the discount threshold for bulk orders?",
+    "ground_truth_answer": "Orders with over 100 units receive a 15% bulk discount automatically.",
+    "ground_truth_contexts": [
+      "Bulk purchase discount of 15% is automatically applied at checkout for quantities of 100 units or higher."
+    ]
+  },
+  {
+    "id": "q5",
+    "query": "How are customer escalation tickets handled?",
+    "ground_truth_answer": "Escalation tickets are triaged by Tier 2 support within 2 hours.",
+    "ground_truth_contexts": [
+      "Customer escalation tickets are assigned to Tier 2 support team with a guaranteed SLA response time of under 2 hours."
+    ]
+  }
+]

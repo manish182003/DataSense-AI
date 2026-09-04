@@ -1,0 +1,17 @@
+DataSense Business Glossary & Domain Context Notes
+
+1. Financial Terms:
+- Sales Amount (Revenue): The total monetary value generated from transactions, expressed in USD.
+- Customer Satisfaction (CSAT): A score rated on a scale of 1.0 to 5.0 measuring customer delight. Scores above 4.5 are considered High Tier.
+- Net Churn Rate: The percentage of recurring revenue lost from existing customers due to cancellations or downgrades.
+
+2. Region Definitions:
+- North Region: Headquarters territory covering Northern states. Priority region for Electronics growth.
+- South Region: Primary market for Clothing and retail expansion.
+- West Region: Technology and high-value Furniture customer base.
+- East Region: Emerging market with high volume of units sold.
+
+3. Product Categories:
+- Electronics: High-margin hardware, gadgets, and computing devices.
+- Furniture: Home and office decor, desks, and ergonomics.
+- Clothing: Apparel, accessories, and seasonal merchandise.

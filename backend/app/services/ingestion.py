@@ -56,15 +56,16 @@ def process_file_upload(file_bytes_or_path: Union[bytes, str], filename: str) ->
             f.write(file_bytes_or_path)
         cleanup_temp = True
 
+    clean_filepath = temp_filepath.replace('\\', '/')
     try:
         conn = get_db_connection()
         if file_ext == '.csv':
             # Use DuckDB native C++ CSV parser (0.3s runtime for 300,000 rows)
-            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto('{temp_filepath}', sample_size=20000)")
+            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto('{clean_filepath}', sample_size=20000)")
         elif file_ext == '.json':
-            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_json_auto('{temp_filepath}')")
+            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_json_auto('{clean_filepath}')")
         elif file_ext in ['.xlsx', '.xls']:
-            df_full = pd.read_excel(temp_filepath)
+            df_full = pd.read_excel(clean_filepath)
             df_full.columns = [sanitize_column_name(c) for c in df_full.columns]
             conn.register("temp_df", df_full)
             conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM temp_df")

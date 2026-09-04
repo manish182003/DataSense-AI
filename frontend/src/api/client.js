@@ -7,28 +7,33 @@
 
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-
-// For large file uploads, bypass Vercel's 4.5MB proxy limit in production by connecting directly to Render
 const DIRECT_BACKEND_URL = 'https://datasense-ai-59kk.onrender.com/api';
-const UPLOAD_BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? '/api' : DIRECT_BACKEND_URL);
+
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return '/api';
+  }
+  return DIRECT_BACKEND_URL;
+};
+
+const BASE_URL = getBaseUrl();
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 120000, // 2 minutes
+  timeout: 300000, // 5 minutes timeout
 });
 
 export const uploadDataset = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const uploadUrl = UPLOAD_BASE_URL.endsWith('/') 
-    ? `${UPLOAD_BASE_URL}datasets/upload` 
-    : `${UPLOAD_BASE_URL}/datasets/upload`;
+  const uploadUrl = BASE_URL.endsWith('/') 
+    ? `${BASE_URL}datasets/upload` 
+    : `${BASE_URL}/datasets/upload`;
 
   const response = await axios.post(uploadUrl, formData, {
     headers: {
@@ -57,9 +62,9 @@ export const uploadContextFile = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const uploadUrl = UPLOAD_BASE_URL.endsWith('/') 
-    ? `${UPLOAD_BASE_URL}context/upload` 
-    : `${UPLOAD_BASE_URL}/context/upload`;
+  const uploadUrl = BASE_URL.endsWith('/') 
+    ? `${BASE_URL}context/upload` 
+    : `${BASE_URL}/context/upload`;
 
   const response = await axios.post(uploadUrl, formData, {
     headers: {

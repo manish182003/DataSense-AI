@@ -1,3 +1,5 @@
+import os
+import uvicorn
 import gradio as gr
 from app.main import app as fastapi_app
 
@@ -9,3 +11,7 @@ with gr.Blocks(title="DataSense AI Backend API") as demo:
 
 # Mount FastAPI app onto Gradio
 app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 7860))
+    demo.launch(server_name="0.0.0.0", server_port=port)

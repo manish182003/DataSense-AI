@@ -215,14 +215,69 @@ body {
 .error-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #fca5a5;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: var(--radius-md);
   margin-top: 16px;
   font-size: 0.9rem;
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.btn-retry-upload {
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-retry-upload:hover {
+  background: rgba(239, 68, 68, 0.4);
+}
+
+.progress-bar-container {
+  width: 100%;
+  max-width: 380px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-blue), #818cf8);
+  transition: width 0.2s ease;
+  border-radius: 999px;
+}
+
+.progress-bar-fill.purple-fill {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+}
+
+.upload-percent-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary-blue);
+  background: rgba(59, 130, 246, 0.15);
+  padding: 2px 8px;
+  border-radius: 12px;
 }
 
 /* Dashboard Layout & KPI Grid */

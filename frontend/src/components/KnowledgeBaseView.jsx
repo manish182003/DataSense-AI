@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, BookOpen, Layers, Search, Sparkles } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, BookOpen, Layers, Search, Sparkles, RotateCcw } from 'lucide-react';
 import { uploadContextFile, getContextDocuments } from '../api/client';
 
 export default function KnowledgeBaseView() {
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [fileName, setFileName] = useState('');
   const [error, setError] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [successMsg, setSuccessMsg] = useState('');
@@ -26,16 +28,20 @@ export default function KnowledgeBaseView() {
     if (!file) return;
 
     setLoading(true);
+    setProgress(0);
+    setFileName(file.name);
     setError(null);
     setSuccessMsg('');
 
     try {
-      const res = await uploadContextFile(file);
+      const res = await uploadContextFile(file, (percent) => {
+        setProgress(percent);
+      });
       setSuccessMsg(`Successfully indexed "${res.filename}" into FAISS dense vector store & BM25 index (${res.chunks_created} semantic chunks).`);
       fetchDocuments();
     } catch (err) {
       console.error('Upload Context Error:', err);
-      setError(err.response?.data?.detail || 'Failed to upload business context document.');
+      setError(err.message || 'Failed to upload business context document.');
     } finally {
       setLoading(false);
     }
@@ -58,6 +64,13 @@ export default function KnowledgeBaseView() {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
+  };
+
+  const resetUpload = () => {
+    setError(null);
+    setLoading(false);
+    setProgress(0);
+    setFileName('');
   };
 
   return (
@@ -102,8 +115,25 @@ export default function KnowledgeBaseView() {
               {loading ? (
                 <div className="upload-state">
                   <Loader2 className="animate-spin icon-large text-purple" />
-                  <p className="state-title">Embedding text & indexing FAISS + BM25...</p>
-                  <p className="state-subtitle">Generating dense vector embeddings with BAAI/bge-small-en-v1.5</p>
+                  <div className="upload-progress-info">
+                    <p className="state-title">
+                      {progress < 100 
+                        ? `Uploading "${fileName}" (${progress}%)` 
+                        : `Embedding text & indexing FAISS + BM25...`}
+                    </p>
+                    <p className="state-subtitle">
+                      {progress < 100 
+                        ? 'Transferring document payload to server' 
+                        : 'Generating vector embeddings with BAAI/bge-small-en-v1.5'}
+                    </p>
+                  </div>
+
+                  <div className="progress-bar-container">
+                    <div 
+                      className="progress-bar-fill purple-fill" 
+                      style={{ width: `${Math.max(progress, 5)}%` }}
+                    ></div>
+                  </div>
                 </div>
               ) : (
                 <div className="upload-state">
@@ -119,8 +149,13 @@ export default function KnowledgeBaseView() {
 
           {error && (
             <div className="error-banner margin-top">
-              <AlertCircle className="icon-small" />
-              <span>{error}</span>
+              <div className="error-content">
+                <AlertCircle className="icon-small" />
+                <span>{error}</span>
+              </div>
+              <button className="btn-retry-upload" onClick={resetUpload}>
+                <RotateCcw className="icon-tiny inline-icon" /> Try Again
+              </button>
             </div>
           )}
 

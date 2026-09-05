@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, BookOpen } from 'lucide-react';
+import { X, UploadCloud, FileText, CheckCircle2, AlertCircle, Loader2, BookOpen, RotateCcw } from 'lucide-react';
 import { uploadContextFile, getContextDocuments } from '../api/client';
 
 export default function ContextUploadModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [fileName, setFileName] = useState('');
   const [error, setError] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [successMsg, setSuccessMsg] = useState('');
@@ -28,19 +30,30 @@ export default function ContextUploadModal({ isOpen, onClose }) {
     if (!file) return;
 
     setLoading(true);
+    setProgress(0);
+    setFileName(file.name);
     setError(null);
     setSuccessMsg('');
 
     try {
-      const res = await uploadContextFile(file);
+      const res = await uploadContextFile(file, (percent) => {
+        setProgress(percent);
+      });
       setSuccessMsg(`Successfully indexed "${res.filename}" (${res.chunks_created} semantic chunks).`);
       fetchDocuments();
     } catch (err) {
       console.error('Upload Context Error:', err);
-      setError(err.response?.data?.detail || 'Failed to upload business context document.');
+      setError(err.message || 'Failed to upload business context document.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetUpload = () => {
+    setError(null);
+    setLoading(false);
+    setProgress(0);
+    setFileName('');
   };
 
   if (!isOpen) return null;
@@ -53,7 +66,7 @@ export default function ContextUploadModal({ isOpen, onClose }) {
             <BookOpen className="icon-medium text-purple" />
             <div>
               <h3 className="modal-title">Business Context Knowledge Base</h3>
-              <p className="modal-subtitle">Upload glossaries, schema documentation, or policy rules (.pdf, .txt)</p>
+              <p className="modal-subtitle">Upload glossaries, schema documentation, or policy rules (.pdf, .txt, .md)</p>
             </div>
           </div>
           <button className="modal-close-btn" onClick={onClose}>
@@ -74,14 +87,24 @@ export default function ContextUploadModal({ isOpen, onClose }) {
             />
             <label htmlFor="context-file-input" className="context-drop-label">
               {loading ? (
-                <div className="flex-center">
+                <div className="upload-state flex-center">
                   <Loader2 className="animate-spin icon-medium text-purple" />
-                  <span>Embedding text & indexing FAISS + BM25...</span>
+                  <span>
+                    {progress < 100 
+                      ? `Uploading "${fileName}" (${progress}%)...` 
+                      : `Embedding text & indexing FAISS + BM25...`}
+                  </span>
+                  <div className="progress-bar-container margin-top-sm">
+                    <div 
+                      className="progress-bar-fill purple-fill" 
+                      style={{ width: `${Math.max(progress, 5)}%` }}
+                    ></div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex-center">
                   <UploadCloud className="icon-medium text-purple" />
-                  <span>Click to upload business document (.pdf, .txt)</span>
+                  <span>Click to upload business document (.pdf, .txt, .md)</span>
                 </div>
               )}
             </label>
@@ -89,8 +112,13 @@ export default function ContextUploadModal({ isOpen, onClose }) {
 
           {error && (
             <div className="error-banner margin-top">
-              <AlertCircle className="icon-small" />
-              <span>{error}</span>
+              <div className="error-content">
+                <AlertCircle className="icon-small" />
+                <span>{error}</span>
+              </div>
+              <button className="btn-retry-upload" onClick={resetUpload}>
+                <RotateCcw className="icon-tiny inline-icon" /> Try Again
+              </button>
             </div>
           )}
 

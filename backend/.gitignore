@@ -1,0 +1,10 @@
+.env
+.env.local
+__pycache__/
+*.pyc
+*.pyo
+*.duckdb
+uploads/
+.venv/
+venv/
+.pytest_cache/

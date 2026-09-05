@@ -34,8 +34,9 @@ export const formatApiError = (err) => {
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join(' | ');
     if (err.response.status === 413) return 'File is too large. Please upload a file under 100MB.';
-    if (err.response.status === 500) return 'Backend server error during processing. Please verify file format and try again.';
+    if (err.response.status === 502) return 'Render Bad Gateway (502). The free tier instance is waking up from idle state. Please wait a moment and click Try Again.';
     if (err.response.status === 504) return 'Server request timed out. Render server may be starting up.';
+    if (err.response.status === 500) return 'Backend server error during processing. Please verify file format and try again.';
     return `Server returned error (${err.response.status}): ${err.response.statusText || 'Operation failed'}`;
   }
   if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {

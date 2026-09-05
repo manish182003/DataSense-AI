@@ -43,6 +43,8 @@ async def upload_dataset(file: UploadFile = File(...)):
             "metadata": metadata,
             "df": df
         }
+        import gc
+        gc.collect()
         return metadata
     except ValueError as val_err:
         raise HTTPException(status_code=400, detail=str(val_err))

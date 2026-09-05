@@ -10,24 +10,35 @@ import numpy as np
 from typing import List, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 import pypdf
-from sentence_transformers import SentenceTransformer, CrossEncoder
-import faiss
-from rank_bm25 import BM25Okapi
 from app.schemas.payload import RetrievedChunk
+
+# Set low-memory environment variables for PyTorch & OpenMP
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 _EMBED_MODEL = None
 _RERANK_MODEL = None
-_THREAD_POOL = ThreadPoolExecutor(max_workers=4)
+_THREAD_POOL = ThreadPoolExecutor(max_workers=2)
 
-def get_embed_model() -> SentenceTransformer:
+def get_embed_model():
     global _EMBED_MODEL
     if _EMBED_MODEL is None:
+        import torch
+        torch.set_num_threads(1)
+        torch.set_grad_enabled(False)
+        from sentence_transformers import SentenceTransformer
         _EMBED_MODEL = SentenceTransformer('BAAI/bge-small-en-v1.5')
     return _EMBED_MODEL
 
-def get_rerank_model() -> CrossEncoder:
+def get_rerank_model():
     global _RERANK_MODEL
     if _RERANK_MODEL is None:
+        import torch
+        torch.set_num_threads(1)
+        torch.set_grad_enabled(False)
+        from sentence_transformers import CrossEncoder
         _RERANK_MODEL = CrossEncoder('BAAI/bge-reranker-base')
     return _RERANK_MODEL
 
@@ -35,8 +46,8 @@ class ContextStore:
     def __init__(self):
         self.documents: Dict[str, Dict[str, Any]] = {}
         self.chunks: List[Dict[str, Any]] = []
-        self.bm25: Optional[BM25Okapi] = None
-        self.faiss_index: Optional[faiss.IndexFlatIP] = None
+        self.bm25: Optional[Any] = None
+        self.faiss_index: Optional[Any] = None
         self.vector_dimension: int = 384
 
     def parse_file(self, file_bytes: bytes, filename: str) -> List[Dict[str, Any]]:
@@ -124,6 +135,9 @@ class ContextStore:
         texts = [c["text"] for c in self.chunks]
 
         # 1. Build Sparse Index (BM25)
+        from rank_bm25 import BM25Okapi
+        import faiss
+
         tokenized_corpus = [re.findall(r'\w+', text.lower()) for text in texts]
         self.bm25 = BM25Okapi(tokenized_corpus)
 

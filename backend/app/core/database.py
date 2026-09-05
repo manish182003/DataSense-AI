@@ -16,7 +16,13 @@ def get_db_connection(max_retries: int = 10, delay: float = 0.2):
     """
     for attempt in range(max_retries):
         try:
-            return duckdb.connect(settings.DUCKDB_PATH)
+            conn = duckdb.connect(settings.DUCKDB_PATH)
+            try:
+                conn.execute("SET memory_limit='256MB';")
+                conn.execute("SET threads=2;")
+            except Exception:
+                pass
+            return conn
         except Exception as err:
             err_str = str(err).lower()
             if ("used by another process" in err_str or "lock" in err_str or "transaction" in err_str) and attempt < max_retries - 1:

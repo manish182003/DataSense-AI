@@ -97,6 +97,60 @@ export const askQuestion = async (datasetId, question, mode = 'auto') => {
   }
 };
 
+export const askQuestionStream = async (datasetId, question, mode, onStatus, onMeta, onChunk, onEnd, onError) => {
+  const streamUrl = BASE_URL.endsWith('/') 
+    ? `${BASE_URL}ask/stream` 
+    : `${BASE_URL}/ask/stream`;
+
+  try {
+    const res = await fetch(streamUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataset_id: datasetId, question: question, mode: mode || 'auto' }),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.detail || `Server returned error ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.replace('data: ', '').trim());
+            if (data.type === 'status' && onStatus) {
+              onStatus(data.text);
+            } else if (data.type === 'meta' && onMeta) {
+              onMeta(data);
+            } else if (data.type === 'content' && onChunk) {
+              onChunk(data.delta);
+            } else if (data.type === 'end' && onEnd) {
+              onEnd();
+            }
+          } catch (e) {
+            console.error('Error parsing SSE event:', e);
+          }
+        }
+      }
+    }
+    if (onEnd) onEnd();
+  } catch (err) {
+    if (onError) onError(formatApiError(err));
+  }
+};
+
 export const uploadContextFile = async (file, onProgress = null) => {
   const formData = new FormData();
   formData.append('file', file);

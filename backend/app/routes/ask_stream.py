@@ -14,10 +14,14 @@ router = APIRouter(prefix="/api/ask", tags=["Streaming Chat"])
 class StreamQueryRequest(BaseModel):
     dataset_id: str = "default"
     question: str
+    mode: str = "auto"
 
 @router.post("/stream")
 async def ask_stream(req: StreamQueryRequest):
-    """Streams LLM response using Server-Sent Events (SSE)."""
+    """
+    Streams LLM response word-by-word using Server-Sent Events (SSE)
+    along with real-time status updates (Routing -> Querying/Retrieving -> Synthesizing).
+    """
     question = req.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
@@ -30,50 +34,62 @@ async def ask_stream(req: StreamQueryRequest):
             yield f"data: {json.dumps({'type': 'end'})}\n\n"
         return StreamingResponse(safe_error_stream(), media_type="text/event-stream")
 
-    # Cache check
-    cache_key = f"stream:{req.dataset_id}:{question}"
-    cached_res = system_cache.get(cache_key)
-    if cached_res:
-        async def cached_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'engine': cached_res.get('engine'), 'citations': cached_res.get('citations')})}\n\n"
-            for word in cached_res["answer"].split(" "):
-                yield f"data: {json.dumps({'type': 'content', 'delta': word + ' '})}\n\n"
-                await asyncio.sleep(0.01)
-            yield f"data: {json.dumps({'type': 'end'})}\n\n"
-        return StreamingResponse(cached_stream(), media_type="text/event-stream")
-
     async def generate_events():
-        # Route intent
-        intent = route_intent(question)
-        
+        # Step 1: Send Intent Routing Status
+        yield f"data: {json.dumps({'type': 'status', 'text': '🔍 Analyzing query intent & selecting engine...'})}\n\n"
+        await asyncio.sleep(0.1)
+
+        mode = req.mode
+        if mode == 'auto':
+            intent = route_intent(question)
+        elif mode == 'rag':
+            intent = 'RAG'
+        else:
+            intent = 'SQL'
+
         if intent == "SQL":
+            yield f"data: {json.dumps({'type': 'status', 'text': '⚡ Executing DuckDB SQL Query & summarizing stats...'})}\n\n"
+            await asyncio.sleep(0.1)
+
             sql_res = ask_nl2sql(req.dataset_id, question)
             answer_text = sql_res.explanation
-            citations = [{"doc": "DuckDB SQL Query", "page": 1}]
-            
-            yield f"data: {json.dumps({'type': 'meta', 'engine': 'DuckDB SQL Engine', 'citations': citations})}\n\n"
-            
-            words = answer_text.split(" ")
-            for i, word in enumerate(words):
-                suffix = " " if i < len(words) - 1 else ""
-                yield f"data: {json.dumps({'type': 'content', 'delta': word + suffix})}\n\n"
-                await asyncio.sleep(0.015)
-                
-            system_cache.set(cache_key, {"answer": answer_text, "engine": "DuckDB SQL Engine", "citations": citations})
+
+            meta_event = {
+                'type': 'meta',
+                'route_used': 'nl2sql',
+                'engine': 'DuckDB SQL Engine',
+                'sql': sql_res.sql,
+                'results': sql_res.results,
+                'row_count': sql_res.row_count,
+                'question': question
+            }
+            yield f"data: {json.dumps(meta_event)}\n\n"
+
         else:
+            yield f"data: {json.dumps({'type': 'status', 'text': '📚 Searching Business Knowledge Base (FAISS + BM25)...'})}\n\n"
+            await asyncio.sleep(0.1)
+
             rag_res = ask_hybrid_rag(req.dataset_id, question)
             answer_text = rag_res.explanation
-            citations = [{"doc": c.source_doc, "page": c.page_number} for c in rag_res.retrieved_chunks]
-            
-            yield f"data: {json.dumps({'type': 'meta', 'engine': 'Business Knowledge Base (Hybrid RAG)', 'citations': citations})}\n\n"
-            
-            words = answer_text.split(" ")
-            for i, word in enumerate(words):
-                suffix = " " if i < len(words) - 1 else ""
-                yield f"data: {json.dumps({'type': 'content', 'delta': word + suffix})}\n\n"
-                await asyncio.sleep(0.015)
-                
-            system_cache.set(cache_key, {"answer": answer_text, "engine": "Business Knowledge Base (Hybrid RAG)", "citations": citations})
+            chunks_dict = [c.model_dump() for c in rag_res.retrieved_chunks]
+
+            meta_event = {
+                'type': 'meta',
+                'route_used': 'rag',
+                'engine': 'Business Knowledge Base (Hybrid RAG)',
+                'retrieved_chunks': chunks_dict,
+                'question': question
+            }
+            yield f"data: {json.dumps(meta_event)}\n\n"
+
+        # Step 3: Stream Words
+        yield f"data: {json.dumps({'type': 'status', 'text': '🤖 Synthesizing AI executive insights...'})}\n\n"
+
+        words = answer_text.split(" ")
+        for i, word in enumerate(words):
+            suffix = " " if i < len(words) - 1 else ""
+            yield f"data: {json.dumps({'type': 'content', 'delta': word + suffix})}\n\n"
+            await asyncio.sleep(0.015)
 
         yield f"data: {json.dumps({'type': 'end'})}\n\n"
 

@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Code, ChevronDown, ChevronUp, Copy, Check, Table, Sparkles, Loader2, BookOpen, Cpu, BarChart3, FileText } from 'lucide-react';
+import { MessageSquare, Send, Code, ChevronDown, ChevronUp, Copy, Check, Table, Sparkles, Loader2, BookOpen, Cpu, BarChart3, FileText, Bot } from 'lucide-react';
 import Plotly from 'plotly.js-dist-min';
 import createPlotlyComponent from 'react-plotly.js/factory';
 import MarkdownRenderer from './MarkdownRenderer';
-import { askQuestion } from '../api/client';
+import { askQuestionStream } from '../api/client';
 
 const Plot = createPlotlyComponent(Plotly);
 
@@ -16,7 +16,7 @@ function shouldDisplayChart(question, results, routeUsed) {
 
   const qLower = (question || '').toLowerCase();
   
-  // Explicit chart request keywords (graph, chart, plot, visualize, against, vs, per, etc.)
+  // Explicit chart request keywords
   const isExplicitChart = /\b(graph|chart|plot|draw|visual|visualize|visualization|against|vs|versus|per|deafult|default|decile|rate)\b/i.test(qLower);
   if (isExplicitChart) return true;
 
@@ -24,7 +24,6 @@ function shouldDisplayChart(question, results, routeUsed) {
   const hasComparativeIntent = /\b(top|highest|lowest|by|breakdown|trend|monthly|yearly|compare|distribution|rank|categories|regions|sales|revenue|units|group)\b/i.test(qLower);
   if (hasComparativeIntent) return true;
 
-  // Show chart for any result with 2+ rows and 2+ columns
   if (results.length >= 2) {
     const keys = Object.keys(results[0]);
     if (keys.length >= 2) return true;
@@ -34,16 +33,13 @@ function shouldDisplayChart(question, results, routeUsed) {
 }
 
 /**
- * Intelligent helper to decide if raw SQL Data Table should be displayed below explanation.
+ * Intelligent helper to decide if raw SQL Data Table should be displayed.
  */
 function shouldDisplayDataTable(results, routeUsed, explanationText) {
   if (routeUsed === 'rag') return false;
   if (!results || !Array.isArray(results) || results.length === 0) return false;
-
-  // Single scalar result (e.g. count or total sum) is already answered in Executive Insights text
   if (results.length === 1 && Object.keys(results[0]).length <= 2) return false;
 
-  // If explanation text already contains a parsed Markdown Table, do not duplicate raw table
   const explanationHasTable = explanationText && explanationText.includes('|') && explanationText.includes('---');
   if (explanationHasTable) return false;
 
@@ -59,7 +55,6 @@ function buildQueryChartSpec(results) {
   const keys = Object.keys(results[0]);
   if (keys.length < 2) return null;
 
-  // Classify columns into numeric vs categorical/date
   const numericKeys = [];
   const categoricalKeys = [];
 
@@ -165,8 +160,10 @@ export default function AskChat({ datasetId, columns }) {
   const [question, setQuestion] = useState('');
   const [mode, setMode] = useState('auto');
   const [loading, setLoading] = useState(false);
+  const [statusText, setStatusText] = useState('');
   const [error, setError] = useState(null);
   const [response, setResponse] = useState(null);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [showSql, setShowSql] = useState(false);
   const [copied, setCopied] = useState(false);
   const responseRef = useRef(null);
@@ -178,29 +175,76 @@ export default function AskChat({ datasetId, columns }) {
   ];
 
   useEffect(() => {
-    if (response && responseRef.current) {
-      responseRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (responseRef.current) {
+      responseRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [response]);
+  }, [response?.explanation, statusText]);
 
-  const handleAsk = async (queryText, forceMode) => {
+  const handleAsk = (queryText, forceMode) => {
     const activeQuery = queryText || question;
     const activeMode = forceMode || mode;
     if (!activeQuery.trim() || !datasetId) return;
 
     setLoading(true);
+    setIsStreaming(true);
+    setStatusText('🔍 Analyzing query intent & selecting engine...');
     setError(null);
 
-    try {
-      const res = await askQuestion(datasetId, activeQuery, activeMode);
-      setResponse(res);
-      setShowSql(false);
-    } catch (err) {
-      console.error('Ask Error:', err);
-      setError(err.response?.data?.detail || 'Unable to process query. Please check dataset status or Groq configuration.');
-    } finally {
-      setLoading(false);
-    }
+    // Initial empty response structure
+    setResponse({
+      explanation: '',
+      route_used: 'nl2sql',
+      engine: 'AI Assistant',
+      sql: null,
+      results: [],
+      row_count: 0,
+      retrieved_chunks: [],
+      question: activeQuery
+    });
+    setShowSql(false);
+
+    askQuestionStream(
+      datasetId,
+      activeQuery,
+      activeMode,
+      // onStatus
+      (statusMsg) => {
+        setStatusText(statusMsg);
+      },
+      // onMeta
+      (meta) => {
+        setResponse(prev => ({
+          ...prev,
+          route_used: meta.route_used,
+          engine: meta.engine,
+          sql: meta.sql || null,
+          results: meta.results || [],
+          row_count: meta.row_count || 0,
+          retrieved_chunks: meta.retrieved_chunks || []
+        }));
+      },
+      // onChunk (stream tokens word-by-word)
+      (chunk) => {
+        setResponse(prev => ({
+          ...prev,
+          explanation: (prev?.explanation || '') + chunk
+        }));
+      },
+      // onEnd
+      () => {
+        setLoading(false);
+        setIsStreaming(false);
+        setStatusText('');
+      },
+      // onError
+      (errMsg) => {
+        console.error('Streaming Ask Error:', errMsg);
+        setError(errMsg);
+        setLoading(false);
+        setIsStreaming(false);
+        setStatusText('');
+      }
+    );
   };
 
   const handleCopySql = () => {
@@ -211,7 +255,6 @@ export default function AskChat({ datasetId, columns }) {
     }
   };
 
-  // Determine visibility of Chart and Table
   const canShowChart = response ? shouldDisplayChart(response.question, response.results, response.route_used) : false;
   const chartSpec = canShowChart ? buildQueryChartSpec(response.results) : null;
   const canShowDataTable = response ? shouldDisplayDataTable(response.results, response.route_used, response.explanation) : false;
@@ -278,10 +321,18 @@ export default function AskChat({ datasetId, columns }) {
           />
           <button type="submit" className="send-btn" disabled={loading || !question.trim()}>
             {loading ? <Loader2 className="animate-spin icon-small" /> : <Send className="icon-small" />}
-            <span>{loading ? 'Analyzing...' : 'Ask'}</span>
+            <span>{loading ? 'Generating...' : 'Ask'}</span>
           </button>
         </div>
       </form>
+
+      {/* Live System Status / Tool / RAG Indicator Pill */}
+      {loading && statusText && (
+        <div className="status-indicator-bar margin-top">
+          <Loader2 className="animate-spin icon-small text-blue" />
+          <span className="status-text">{statusText}</span>
+        </div>
+      )}
 
       {error && (
         <div className="error-banner margin-top">
@@ -290,7 +341,7 @@ export default function AskChat({ datasetId, columns }) {
       )}
 
       {/* Response Panel */}
-      {response && (
+      {response && (response.explanation || isStreaming) && (
         <div className="response-panel" ref={responseRef}>
           
           {/* Answer Source Badge */}
@@ -313,6 +364,7 @@ export default function AskChat({ datasetId, columns }) {
             </div>
             <div className="explanation-content">
               <MarkdownRenderer content={response.explanation} />
+              {isStreaming && <span className="typing-cursor">▌</span>}
             </div>
 
             {/* Citations for Knowledge Base queries */}
@@ -330,7 +382,7 @@ export default function AskChat({ datasetId, columns }) {
             )}
           </div>
 
-          {/* Query Result Chart (Rendered ONLY when comparative/trend visualization is genuinely needed) */}
+          {/* Query Result Chart */}
           {chartSpec && (
             <div className="query-chart-card margin-top">
               <div className="query-chart-header">
@@ -356,7 +408,7 @@ export default function AskChat({ datasetId, columns }) {
             </div>
           )}
 
-          {/* Raw SQL Data Table (Rendered ONLY when table is NOT already parsed in explanation & results > 1) */}
+          {/* Raw SQL Data Table */}
           {canShowDataTable && (
             <div className="results-table-container margin-top">
               <div className="table-header-bar">
@@ -388,7 +440,7 @@ export default function AskChat({ datasetId, columns }) {
             </div>
           )}
 
-          {/* Collapsible DuckDB SQL Block (Shown ONLY for SQL queries, default collapsed) */}
+          {/* Collapsible DuckDB SQL Block */}
           {response.route_used !== 'rag' && response.sql && (
             <div className="sql-box margin-top">
               <div className="sql-header" onClick={() => setShowSql(!showSql)}>

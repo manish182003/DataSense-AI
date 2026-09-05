@@ -871,6 +871,41 @@ body {
   border-radius: 6px;
 }
 
+.inline-code-chip {
+  background-color: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #334155;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Roboto Mono', Monaco, monospace;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.markdown-hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #334155, transparent);
+  margin: 16px 0;
+}
+
+.markdown-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(139, 92, 246, 0.08);
+  border-left: 3px solid #a855f7;
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin: 12px 0;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.text-italic {
+  font-style: italic;
+  color: #cbd5e1;
+}
 
 /* Engine Selector & Header Bar Styling */
 .header-top-bar {

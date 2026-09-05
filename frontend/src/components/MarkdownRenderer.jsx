@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Sparkles, ChevronRight } from 'lucide-react';
+import { FileText, Sparkles, ChevronRight, Quote } from 'lucide-react';
 
 export default function MarkdownRenderer({ content }) {
   if (!content) return null;
@@ -18,12 +18,24 @@ export default function MarkdownRenderer({ content }) {
       ));
     }
 
-    // Replace citations like [Source: filename, Page X] or [Doc: filename] with interactive badges
-    const parts = text.split(/(\[Source:.*?\]|\[Doc:.*?\]|\*\*.*?\*\*|\*.*?\*)/g);
+    // Split on:
+    // 1. Inline Code: `code`
+    // 2. Bold: **text**
+    // 3. Italic: *text* or _text_
+    // 4. Citations: [Source: ...] or [Doc: ...]
+    const tokenRegex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_|\[Source:.*?\]|\[Doc:.*?\])/g;
+    const parts = text.split(tokenRegex);
 
     return parts.map((part, idx) => {
       if (!part) return null;
 
+      // Inline code `code`
+      if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+        const codeContent = part.slice(1, -1);
+        return <code key={idx} className="inline-code-chip">{codeContent}</code>;
+      }
+
+      // Citations
       if (part.startsWith('[Source:') || part.startsWith('[Doc:')) {
         const cleanCitation = part.replace(/^\[(Source|Doc):\s*/, '').replace(/\]$/, '');
         return (
@@ -33,16 +45,24 @@ export default function MarkdownRenderer({ content }) {
         );
       }
 
-      if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('*') && part.endsWith('*'))) {
-        const cleanBold = part.replace(/^\*+|\*+$/g, '');
-        return <strong key={idx} className="text-highlight">{cleanBold}</strong>;
+      // Bold **text**
+      if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+        const boldText = part.slice(2, -2);
+        return <strong key={idx} className="text-highlight">{boldText}</strong>;
+      }
+
+      // Italic *text* or _text_
+      if ((part.startsWith('*') && part.endsWith('*') && part.length >= 2) ||
+          (part.startsWith('_') && part.endsWith('_') && part.length >= 2)) {
+        const italicText = part.slice(1, -1);
+        return <em key={idx} className="text-italic">{italicText}</em>;
       }
 
       return part;
     });
   };
 
-  // Block parser to group lines into tables, lists, headers, and paragraphs
+  // Block parser to group lines into tables, lists, headers, divider lines, and paragraphs
   const rawLines = content.split('\n');
   const blocks = [];
   let currentTable = null;
@@ -54,9 +74,15 @@ export default function MarkdownRenderer({ content }) {
       return;
     }
 
-    // 1. Check if line is part of a pipe markdown table (| col1 | col2 |)
+    // 1. Horizontal divider rules (---, ***, ___)
+    if (/^[\s]*[-*_]{3,}[\s]*$/.test(trimmed)) {
+      currentTable = null;
+      blocks.push({ type: 'hr' });
+      return;
+    }
+
+    // 2. Check if line is part of a pipe markdown table (| col1 | col2 |)
     const isPipeTable = (trimmed.startsWith('|') && trimmed.endsWith('|')) || (trimmed.split('|').length >= 3);
-    // 2. Check if line is tab-separated table row (Col1\tCol2)
     const isTabTable = trimmed.includes('\t') && trimmed.split('\t').length >= 2;
 
     if (isPipeTable) {
@@ -99,6 +125,10 @@ export default function MarkdownRenderer({ content }) {
   return (
     <div className="markdown-rich-content">
       {blocks.map((block, bIdx) => {
+        if (block.type === 'hr') {
+          return <hr key={bIdx} className="markdown-hr" />;
+        }
+
         if (block.type === 'table') {
           return (
             <div key={bIdx} className="markdown-table-wrapper margin-y">
@@ -126,11 +156,23 @@ export default function MarkdownRenderer({ content }) {
 
         const trimmed = block.text;
 
+        // Blockquotes (e.g. > quote)
+        if (trimmed.startsWith('>')) {
+          const quoteText = trimmed.replace(/^>\s*/, '');
+          return (
+            <blockquote key={bIdx} className="markdown-quote">
+              <Quote className="icon-tiny text-purple quote-icon" />
+              <span>{renderFormattedInline(quoteText)}</span>
+            </blockquote>
+          );
+        }
+
         // Headers (e.g. ### Header or ## Header)
         if (trimmed.startsWith('#')) {
+          const level = (trimmed.match(/^#+/) || ['#'])[0].length;
           const headerText = trimmed.replace(/^#+\s*/, '');
           return (
-            <h4 key={bIdx} className="markdown-header">
+            <h4 key={bIdx} className={`markdown-header header-level-${level}`}>
               <Sparkles className="icon-tiny text-blue" /> {renderFormattedInline(headerText)}
             </h4>
           );

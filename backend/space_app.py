@@ -1,5 +1,6 @@
 import sys
 import os
+import uvicorn
 import huggingface_hub
 
 # Compatibility shim for Gradio + huggingface_hub 0.25+

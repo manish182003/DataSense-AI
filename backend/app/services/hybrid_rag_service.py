@@ -56,9 +56,10 @@ Answer:"""
     if not settings.GROQ_API_KEY:
         explanation_text = f"Retrieved {len(retrieved_chunks)} relevant context chunks. (GROQ_API_KEY is not set for synthesis)."
     else:
+        from app.services.nl2sql import call_groq_with_retry
         client = Groq(api_key=settings.GROQ_API_KEY)
-        resp = client.chat.completions.create(
-            model=settings.DEFAULT_LLM_MODEL,
+        resp = call_groq_with_retry(
+            client,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )

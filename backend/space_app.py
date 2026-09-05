@@ -28,6 +28,6 @@ with gr.Blocks(title="DataSense AI Backend API") as demo:
 # Mount FastAPI app onto Gradio
 app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
-# Launch server and block main thread to keep Hugging Face Space container alive
-port = int(os.getenv("PORT", 7860))
-demo.launch(server_name="0.0.0.0", server_port=port)
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)

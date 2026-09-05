@@ -103,7 +103,7 @@ CRITICAL DUCKDB SYNTAX RULES:
 2. Do NOT execute drop, alter, update, or delete commands. Use read-only SELECT statements.
 3. DuckDB does NOT support TO_DATE(), STR_TO_DATE(), or DATE_FORMAT().
    - For string-to-date conversion, use `TRY_CAST(col AS DATE)` or `strptime(col, '%Y-%m-%d')`.
-   - For date truncation, use `date_trunc('month', TRY_CAST(col AS DATE))`.
+   - For monthly aggregations (e.g. 'sales by month'), use `date_trunc('month', TRY_CAST(date_col AS DATE))` or `strftime(TRY_CAST(date_col AS DATE), '%Y-%m') AS month`.
 4. Ensure column names match the schema EXACTLY.
 5. If the user asks about important features, targets, or default prediction, query key column metrics, counts, or target column distributions.
 
@@ -151,6 +151,8 @@ def ask_nl2sql(dataset_id: str, question: str, sample_rows: List[Dict[str, Any]]
 
     client = Groq(api_key=settings.GROQ_API_KEY)
     schema = get_table_schema(dataset_id)
+    if not schema:
+        raise ValueError(f"Dataset table '{dataset_id}' not found. Please upload a dataset file first.")
     
     if not sample_rows:
         try:

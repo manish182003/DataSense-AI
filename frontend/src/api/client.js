@@ -136,6 +136,8 @@ export const askQuestionStream = async (datasetId, question, mode, onStatus, onM
               onMeta(data);
             } else if (data.type === 'content' && onChunk) {
               onChunk(data.delta);
+            } else if (data.type === 'error' && onError) {
+              onError(data.text);
             } else if (data.type === 'end' && onEnd) {
               onEnd();
             }

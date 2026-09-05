@@ -880,6 +880,85 @@ body {
   font-family: 'Fira Code', 'Roboto Mono', Monaco, monospace;
   font-size: 0.85em;
   font-weight: 500;
+  word-break: break-word;
+}
+
+.markdown-rich-content {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+
+.markdown-paragraph {
+  margin-bottom: 10px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-bullet-row, .markdown-numbered-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.bullet-text, .numbered-text {
+  flex: 1;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-header {
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 14px 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 14px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+}
+
+.rendered-markdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.rendered-markdown-table th {
+  background-color: #1e293b;
+  color: #38bdf8;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-bottom: 1px solid #334155;
+  white-space: nowrap;
+}
+
+.rendered-markdown-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+.rendered-markdown-table tr:hover {
+  background-color: rgba(59, 130, 246, 0.05);
 }
 
 .markdown-hr {
@@ -900,6 +979,8 @@ body {
   margin: 12px 0;
   color: #e2e8f0;
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .text-italic {
@@ -961,8 +1042,10 @@ body {
   background-color: #151c2c;
   border: 1px solid #232d42;
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .query-chart-header {
@@ -1030,6 +1113,8 @@ body {
   font-size: 0.85rem;
   font-weight: 500;
   animation: pulse-glow 2s infinite ease-in-out;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 @keyframes pulse-glow {
@@ -1076,17 +1161,21 @@ body {
   }
 
   .main-content {
+    padding: 12px;
+  }
+
+  .ask-container {
     padding: 16px;
   }
 }
 
 @media (max-width: 480px) {
   .brand-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 
   .brand-subtitle {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 
   .kpi-grid {
@@ -1094,23 +1183,42 @@ body {
   }
   
   .suggestions-row {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 6px;
+    align-items: center;
+  }
+
+  .suggestion-chip {
+    flex-shrink: 0;
   }
 
   .ask-input-form .input-wrapper {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
-    padding: 8px;
+    padding: 6px 10px;
+  }
+
+  .ask-input {
+    font-size: 0.85rem;
+    min-width: 0;
   }
 
   .send-btn {
-    width: 100%;
-    justify-content: center;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .explanation-box {
-    padding: 14px;
+    padding: 12px;
+  }
+
+  .query-chart-card {
+    padding: 10px;
   }
 }

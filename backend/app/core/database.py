@@ -18,8 +18,8 @@ def get_db_connection(max_retries: int = 10, delay: float = 0.2):
         try:
             conn = duckdb.connect(settings.DUCKDB_PATH)
             try:
-                conn.execute("SET memory_limit='256MB';")
-                conn.execute("SET threads=2;")
+                conn.execute("SET memory_limit='128MB';")
+                conn.execute("SET threads=1;")
             except Exception:
                 pass
             return conn

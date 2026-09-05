@@ -60,8 +60,8 @@ def process_file_upload(file_bytes_or_path: Union[bytes, str], filename: str) ->
     try:
         conn = get_db_connection()
         if file_ext == '.csv':
-            # Use DuckDB native C++ CSV parser (0.3s runtime for 300,000 rows)
-            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto('{clean_filepath}', sample_size=20000)")
+            # Use DuckDB native C++ CSV parser with tight sample_size for 300,000+ rows
+            conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_csv_auto('{clean_filepath}', sample_size=1000)")
         elif file_ext == '.json':
             conn.execute(f"CREATE TABLE {table_name} AS SELECT * FROM read_json_auto('{clean_filepath}')")
         elif file_ext in ['.xlsx', '.xls']:
@@ -116,8 +116,8 @@ def process_file_upload(file_bytes_or_path: Union[bytes, str], filename: str) ->
         total_cells = total_rows * total_cols
         total_missing_pct = round((total_missing / total_cells * 100) if total_cells > 0 else 0, 2)
 
-        # Get lightweight sample DataFrame (max 5,000 rows) for auto-profiling charts
-        df_sample = conn.execute(f"SELECT * FROM {table_name} LIMIT 5000").df()
+        # Get lightweight sample DataFrame (max 1,000 rows) for auto-profiling charts
+        df_sample = conn.execute(f"SELECT * FROM {table_name} LIMIT 1000").df()
 
         # Save table as ZSTD-compressed Parquet for persistent, ultra-fast zero-RAM loading
         parquet_filepath = os.path.join(temp_dir, f"{table_name}.parquet").replace('\\', '/')

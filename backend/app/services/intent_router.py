@@ -48,16 +48,17 @@ Question: "{question}"
 Output ONLY "nl2sql" or "rag" (no punctuation, no additional text)."""
 
         resp = client.chat.completions.create(
-            model=settings.DEFAULT_LLM_MODEL,
+            model=settings.FAST_LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=5
         )
-        output = (resp.choices[0].message.content or "").strip().lower()
-        if "rag" in output:
-            return "rag"
-        if "sql" in output or "nl2sql" in output:
-            return "nl2sql"
+        if resp and hasattr(resp, 'choices') and resp.choices:
+            output = (resp.choices[0].message.content or "").strip().lower()
+            if "rag" in output:
+                return "rag"
+            if "sql" in output or "nl2sql" in output:
+                return "nl2sql"
     except Exception:
         pass
 

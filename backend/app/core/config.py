@@ -16,8 +16,9 @@ class Settings(BaseSettings):
     
     # LLM Settings (Groq API)
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "groq/compound-mini")
-    LARGE_LLM_MODEL: str = os.getenv("LARGE_LLM_MODEL", "qwen/qwen3.6-27b")
+    DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "llama-3.3-70b-versatile")
+    LARGE_LLM_MODEL: str = os.getenv("LARGE_LLM_MODEL", "llama-3.3-70b-versatile")
+    FAST_LLM_MODEL: str = os.getenv("FAST_LLM_MODEL", "llama-3.1-8b-instant")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

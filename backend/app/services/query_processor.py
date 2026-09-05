@@ -46,13 +46,15 @@ Rules:
 2. Expand abbreviations and include key domain synonyms."""
 
         resp = client.chat.completions.create(
-            model=settings.DEFAULT_LLM_MODEL,
+            model=settings.FAST_LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=30
         )
-        rewritten = (resp.choices[0].message.content or "").strip()
-        return rewritten if rewritten else expanded
+        if resp and hasattr(resp, 'choices') and resp.choices:
+            rewritten = (resp.choices[0].message.content or "").strip()
+            return rewritten if rewritten else expanded
+        return expanded
     except Exception:
         return expanded
 

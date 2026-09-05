@@ -40,37 +40,48 @@ def extract_sql_from_response(text: str) -> str:
 def call_groq_with_retry(client: Groq, messages: List[Dict[str, str]], model: str = None, temperature: float = 0.1, retries: int = 3):
     """
     Executes Groq chat completion with exponential backoff on HTTP 429 rate limits 
-    and fallback model strategy.
+    and fallback model strategy (llama-3.1-8b-instant).
     """
     primary_model = model or settings.DEFAULT_LLM_MODEL
-    fallback_model = "openai/gpt-oss-20b"
+    fallback_model = settings.FAST_LLM_MODEL
 
     for attempt in range(retries):
         try:
-            return client.chat.completions.create(
+            res = client.chat.completions.create(
                 model=primary_model,
                 messages=messages,
                 temperature=temperature
             )
+            if res and hasattr(res, 'choices') and res.choices:
+                return res
         except Exception as e:
             err_str = str(e)
             if "429" in err_str or "rate_limit" in err_str.lower():
                 logger.warning(f"Groq Rate Limit (429) hit on attempt {attempt+1}/{retries}. Backing off.")
-                time.sleep(2.0 * (attempt + 1))
+                time.sleep(1.5 * (attempt + 1))
             elif attempt == retries - 1:
-                # Try fallback lightweight model on final retry
+                # Try fallback lightweight ultra-fast model on final retry
                 try:
                     logger.warning(f"Attempting fallback model '{fallback_model}' due to error: {err_str}")
-                    return client.chat.completions.create(
+                    res = client.chat.completions.create(
                         model=fallback_model,
                         messages=messages,
                         temperature=temperature
                     )
-                except Exception:
-                    pass
+                    if res and hasattr(res, 'choices') and res.choices:
+                        return res
+                except Exception as fb_err:
+                    logger.error(f"Fallback model call failed: {fb_err}")
                 raise e
             else:
-                time.sleep(1.0)
+                time.sleep(0.5)
+
+    # Secondary fallback directly to fast model
+    return client.chat.completions.create(
+        model=fallback_model,
+        messages=messages,
+        temperature=temperature
+    )
 
 def generate_sql_prompt(table_name: str, schema: List[Dict[str, str]], sample_rows: List[Dict[str, Any]], question: str) -> str:
     """

@@ -33,14 +33,15 @@ Rules:
 3. Output ONLY "PASS" or "FAIL" followed by a short 1-sentence explanation."""
 
         resp = client.chat.completions.create(
-            model=settings.DEFAULT_LLM_MODEL,
+            model=settings.FAST_LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0,
             max_tokens=40
         )
-        output = (resp.choices[0].message.content or "").strip()
-        if output.startswith("FAIL"):
-            return False, output
-        return True, output
+        if resp and hasattr(resp, 'choices') and resp.choices:
+            output = (resp.choices[0].message.content or "").strip()
+            if output.startswith("FAIL"):
+                return False, output
+        return True, "Check complete."
     except Exception:
         return True, "Check complete."

@@ -55,10 +55,19 @@ def get_dataset_entry(dataset_id: str) -> Dict:
     if dataset_id in DATASET_STORE:
         return DATASET_STORE[dataset_id]
     
-    # Check if table exists in DuckDB persistent store
+    # Check if table exists in DuckDB persistent store or can be restored from compressed Parquet
     try:
         from app.core.database import get_table_schema, get_db_connection
         schema = get_table_schema(dataset_id)
+        parquet_file = os.path.join(settings.UPLOAD_DIR, f"{dataset_id}.parquet")
+        
+        if not schema and os.path.exists(parquet_file):
+            conn = get_db_connection()
+            clean_p = parquet_file.replace('\\', '/')
+            conn.execute(f"CREATE TABLE {dataset_id} AS SELECT * FROM read_parquet('{clean_p}')")
+            conn.close()
+            schema = get_table_schema(dataset_id)
+
         if schema:
             conn = get_db_connection()
             total_rows = conn.execute(f"SELECT COUNT(*) FROM {dataset_id}").fetchone()[0]

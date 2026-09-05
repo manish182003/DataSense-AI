@@ -118,6 +118,14 @@ def process_file_upload(file_bytes_or_path: Union[bytes, str], filename: str) ->
 
         # Get lightweight sample DataFrame (max 5,000 rows) for auto-profiling charts
         df_sample = conn.execute(f"SELECT * FROM {table_name} LIMIT 5000").df()
+
+        # Save table as ZSTD-compressed Parquet for persistent, ultra-fast zero-RAM loading
+        parquet_filepath = os.path.join(temp_dir, f"{table_name}.parquet").replace('\\', '/')
+        try:
+            conn.execute(f"COPY {table_name} TO '{parquet_filepath}' (FORMAT PARQUET, COMPRESSION ZSTD)")
+        except Exception:
+            pass
+
         conn.close()
 
         sample_df = df_sample.head(5).where(pd.notnull(df_sample.head(5)), None)
@@ -132,6 +140,9 @@ def process_file_upload(file_bytes_or_path: Union[bytes, str], filename: str) ->
             columns=column_meta_list,
             sample_rows=sample_rows
         )
+
+        import gc
+        gc.collect()
 
         return table_name, metadata, df_sample
 

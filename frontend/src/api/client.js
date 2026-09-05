@@ -7,7 +7,7 @@
 
 import axios from 'axios';
 
-const DIRECT_BACKEND_URL = 'https://datasense-ai.onrender.com/api';
+const DIRECT_BACKEND_URL = 'https://datasense-ai-59kk.onrender.com/api';
 
 const getBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;

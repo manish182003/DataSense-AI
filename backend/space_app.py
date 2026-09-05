@@ -26,9 +26,5 @@ with gr.Blocks(title="DataSense AI Backend API") as demo:
     gr.Markdown("FastAPI + DuckDB + Groq LLM + Hybrid RAG Engine is live and serving requests.")
     gr.Markdown("API Documentation: [Swagger Docs](/docs)")
 
-# Mount FastAPI app onto Gradio
+# Mount FastAPI app onto Gradio (Hugging Face Space runner detects `app` and manages server execution)
 app = gr.mount_gradio_app(fastapi_app, demo, path="/")
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)

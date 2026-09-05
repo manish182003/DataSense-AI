@@ -1,15 +1,5 @@
-import os
-import sys
-import importlib
-
-# Ensure current directory is on python path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
 import gradio as gr
-
-# Load app.main explicitly to avoid module name collision between app.py and app/ directory
-main_mod = importlib.import_module("app.main")
-fastapi_app = main_mod.app
+from app.main import app as fastapi_app
 
 # Create a clean status page for Hugging Face Space landing
 with gr.Blocks(title="DataSense AI Backend API") as demo:
